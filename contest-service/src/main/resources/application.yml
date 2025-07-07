@@ -1,0 +1,14 @@
+jwt:
+  secret: whats my name? what's by name, what's my name? my name is sheelaaa
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/contest_db
+    username: contestuser
+    password: contestpass
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect:org.hibernate.dialect.PostgreSQLDialect
+    show-sql: true
