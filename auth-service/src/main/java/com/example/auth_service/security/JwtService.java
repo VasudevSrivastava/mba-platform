@@ -9,7 +9,6 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import org.springframework.stereotype.Service;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 
 
 // gotta prevent duplicate users
@@ -18,8 +17,10 @@ public class JwtService {
     private final String SECRET_KEY = "whats my name? what's by name, what's my name? my name is sheelaaa";
 
     public String generateToken(UserDetails userDetails){
+        UserDetailsImpl user = (UserDetailsImpl) userDetails;
         return Jwts.builder()
                 .setSubject(userDetails.getUsername())
+                .claim("userId", user.getId())
                 .claim("role", userDetails.getAuthorities().iterator().next().getAuthority())
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + 1000 * 60 * 60 * 24))

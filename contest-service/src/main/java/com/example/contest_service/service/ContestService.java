@@ -1,15 +1,24 @@
 package com.example.contest_service.service;
 
+import com.example.contest_service.client.QuestionValidator;
 import com.example.contest_service.dto.ContestRequest;
 import com.example.contest_service.dto.ContestResponse;
+import com.example.contest_service.dto.QuestionDTO;
+import com.example.contest_service.model.ContestAttempt;
+import com.example.contest_service.repository.ContestAttemptRepository;
 import com.example.contest_service.repository.ContestRepository;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
+
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import com.example.contest_service.model.Contest;
 import org.springframework.web.client.RestTemplate;
-import java.util.Map;
-import java.util.HashMap;
+import org.springframework.web.reactive.function.client.WebClient;
+
+import java.time.LocalDateTime;
+import java.util.Optional;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.UUID;
@@ -18,11 +27,14 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class ContestService {
     private final ContestRepository contestRepository;
-    private final RestTemplate restTemplate;
+    private final ContestAttemptRepository contestAttemptRepository;
+    private final WebClient webClient;
+    private final QuestionValidator questionValidator;
 
-    public void create(ContestRequest request){
-        if (!validQuestionIds(request.getQuestionIds())){
-            throw(new IllegalArgumentException("Some question IDs are invalid"));
+
+    public void create(ContestRequest request, String authHeader){
+        if (!questionValidator.areValidQuestionIds(request.getQuestionIds(), authHeader)){
+            throw new IllegalArgumentException("Some question IDs are invalid");
         }
         var contest = Contest.builder()
                 .title(request.getTitle())
@@ -68,6 +80,58 @@ public class ContestService {
         return mapToResponse(contest);
     }
 
+    public void startContest(Long contestId, Long userId){
+        Contest contest = contestRepository.findById(contestId).orElseThrow(
+                () -> new NoSuchElementException("Contest not found"));
+        LocalDateTime now = LocalDateTime.now();
+        if (now.isBefore(contest.getStartTime()) || now.isAfter(contest.getEndTime())) {
+            throw new IllegalStateException("Contest in not active");
+        };
+
+        Optional<ContestAttempt> existing = contestAttemptRepository.findByUserIdAndContestId(userId, contestId);
+        if (existing.isPresent()) {
+            return;
+        }
+        ContestAttempt contestAttempt = new ContestAttempt();
+        contestAttempt.setContestId(contestId);
+        contestAttempt.setUserId(userId);
+        contestAttempt.setStartedAt(now);
+        contestAttempt.setCompleted(false);
+
+        contestAttemptRepository.save(contestAttempt);
+    }
+    public List<QuestionDTO> getQuestionsForContest(Long contestId, String token){
+        Contest contest = contestRepository.findById(contestId)
+                .orElseThrow(() -> new NoSuchElementException("Contest Not found"));
+
+        LocalDateTime now = LocalDateTime.now();
+        if (now.isBefore(contest.getStartTime()) || now.isAfter(contest.getEndTime())) {
+            throw new IllegalStateException("Contest in not active");
+        };
+        Long userId = (Long) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        Optional<ContestAttempt> existing = contestAttemptRepository.findByUserIdAndContestId(userId, contestId);
+        if (existing.isEmpty()) {
+            throw new IllegalStateException("User has not started the contest yet");
+        }
+        if (token == null || !token.startsWith("Bearer ")) {
+            throw new IllegalArgumentException("Missing or invalid Authorization token");
+        }
+        List<UUID> questionIds = contest.getQuestionIds();
+        List<QuestionDTO> questions = webClient.post()
+                .uri("http://127.0.0.1:8000/api/questions/batch/")
+                .header("Authorization", token)
+                .bodyValue(Map.of("id_list", questionIds))
+                .retrieve()
+                .bodyToMono(new ParameterizedTypeReference<List<QuestionDTO>>() {
+                })
+                .block();  // understand the async version
+
+        return questions;
+    }
+    public void submitAnswer(Long contestId, UUID questionId){
+
+    }
+
     private ContestResponse mapToResponse(Contest contest){
         ContestResponse response = new ContestResponse();
         response.setId(contest.getId());
@@ -81,18 +145,6 @@ public class ContestService {
         return response;
     }
 
-    private boolean validQuestionIds(List<UUID> questionIds){
-        String url = "http://127.0.0.1:8000/api/questions/batch/";
 
-        Map<String, Object> request = new HashMap<>();
-        request.put("id_list", questionIds);
-
-        questions = restTemplate.body(request);
-
-        if (questions == null || question.size() != questionIds.size()){
-            return false;
-        }
-        return true;
-    }
 }
 

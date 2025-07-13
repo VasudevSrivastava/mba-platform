@@ -1,5 +1,6 @@
 package com.example.contest_service.security;
 
+import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -36,12 +37,13 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         String jwt = authHeader.substring(7);
 
         if (jwtService.isTokenValid(jwt)) {
-            String username = jwtService.extractUsername(jwt);
+//            String username = jwtService.extractUsername(jwt);
+            Long userId = jwtService.extractUserId(jwt);
             String role = jwtService.extractRole(jwt);
 
             var authorities = Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + role.toUpperCase()));
 
-            var authToken = new UsernamePasswordAuthenticationToken(username, null, authorities);
+            var authToken = new UsernamePasswordAuthenticationToken(userId, null, authorities);
             SecurityContextHolder.getContext().setAuthentication(authToken);
         }
 
