@@ -7,6 +7,6 @@ import java.util.UUID;
 
 @Data
 public class OptionDTO {
+    private int id;
     private String text;
-    private boolean isCorrect;
 }

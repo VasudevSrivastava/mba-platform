@@ -1,23 +1,22 @@
 package com.example.contest_service.service;
-
 import com.example.contest_service.client.QuestionValidator;
 import com.example.contest_service.dto.ContestRequest;
 import com.example.contest_service.dto.ContestResponse;
 import com.example.contest_service.dto.QuestionDTO;
+import com.example.contest_service.model.AnswerSubmission;
 import com.example.contest_service.model.ContestAttempt;
+import com.example.contest_service.repository.AnswerSubmissionRepository;
 import com.example.contest_service.repository.ContestAttemptRepository;
 import com.example.contest_service.repository.ContestRepository;
 import java.util.Map;
+import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import com.example.contest_service.model.Contest;
-import org.springframework.web.client.RestTemplate;
 import org.springframework.web.reactive.function.client.WebClient;
-
-import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.List;
 import java.util.NoSuchElementException;
@@ -30,6 +29,7 @@ public class ContestService {
     private final ContestAttemptRepository contestAttemptRepository;
     private final WebClient webClient;
     private final QuestionValidator questionValidator;
+    private final AnswerSubmissionRepository answerSubmissionRepository;
 
 
     public void create(ContestRequest request, String authHeader){
@@ -86,7 +86,7 @@ public class ContestService {
         LocalDateTime now = LocalDateTime.now();
         if (now.isBefore(contest.getStartTime()) || now.isAfter(contest.getEndTime())) {
             throw new IllegalStateException("Contest in not active");
-        };
+        }
 
         Optional<ContestAttempt> existing = contestAttemptRepository.findByUserIdAndContestId(userId, contestId);
         if (existing.isPresent()) {
@@ -107,7 +107,9 @@ public class ContestService {
         LocalDateTime now = LocalDateTime.now();
         if (now.isBefore(contest.getStartTime()) || now.isAfter(contest.getEndTime())) {
             throw new IllegalStateException("Contest in not active");
-        };
+        }
+
+
         Long userId = (Long) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         Optional<ContestAttempt> existing = contestAttemptRepository.findByUserIdAndContestId(userId, contestId);
         if (existing.isEmpty()) {
@@ -117,7 +119,7 @@ public class ContestService {
             throw new IllegalArgumentException("Missing or invalid Authorization token");
         }
         List<UUID> questionIds = contest.getQuestionIds();
-        List<QuestionDTO> questions = webClient.post()
+        return webClient.post()
                 .uri("http://127.0.0.1:8000/api/questions/batch/")
                 .header("Authorization", token)
                 .bodyValue(Map.of("id_list", questionIds))
@@ -126,10 +128,19 @@ public class ContestService {
                 })
                 .block();  // understand the async version
 
-        return questions;
     }
-    public void submitAnswer(Long contestId, UUID questionId){
+    public void submitAnswer(Long userId,Long contestId, UUID questionId,Long selectedOptionId, String selectedOptionText){
 
+        var answerSubmission = AnswerSubmission.builder() // yes i did add builder annotation to Answer Submission
+                .contestId(contestId)
+                .userId(userId)
+                .questionId(questionId)
+                .submittedAt(LocalDateTime.now())
+                .selectedOptionId(selectedOptionId)
+                .selectedOptionText(selectedOptionText)
+                .build();
+
+        answerSubmissionRepository.save(answerSubmission);
     }
 
     private ContestResponse mapToResponse(Contest contest){

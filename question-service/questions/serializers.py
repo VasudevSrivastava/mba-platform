@@ -9,7 +9,11 @@ class QuestionListSerializer(serializers.ModelSerializer):
 class OptionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Option
-        fields = ['text', 'is_correct']
+        fields = ['id','text']
+
+class CorrectOptionSerializer(serializers.Serializer):
+    correct_option_id = serializers.IntegerField()
+    correct_option_text = serializers.CharField()
     
 class QuestionSerializer(serializers.ModelSerializer):
     options = OptionSerializer(many=True, read_only = True)

@@ -22,10 +22,18 @@ public class SecurityConfig {
         http
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/contests", "/contests/**").authenticated()
-                        .requestMatchers(HttpMethod.GET, "/contests").permitAll()
+                        .requestMatchers(HttpMethod.GET,
+                                "/contests",
+                                "/auth/**",
+                                "/swagger-ui/**",
+                                "/v3/api-docs/**",
+                                "/v3/api-docs.yaml"
+                        ).permitAll()
+                                .requestMatchers("/contests", "/contests/**").permitAll()
+//                        .requestMatchers("/contests", "/contests/**").authenticated()
                         .anyRequest().permitAll()
                 )
+
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

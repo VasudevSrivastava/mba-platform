@@ -1,10 +1,13 @@
 package com.example.contest_service.controller;
 
+import com.example.contest_service.dto.AnswerSubmissionRequest;
 import com.example.contest_service.dto.ContestRequest;
 import com.example.contest_service.dto.ContestResponse;
 import com.example.contest_service.dto.QuestionDTO;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.apache.coyote.Response;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -12,9 +15,11 @@ import org.springframework.web.bind.annotation.*;
 import com.example.contest_service.service.ContestService;
 import java.util.Map;
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequiredArgsConstructor
+@SecurityRequirement(name = "bearerAuth")
 @RequestMapping("/contests")
 public class ContestController {
 
@@ -42,7 +47,7 @@ public class ContestController {
         return ResponseEntity.ok("Contest Deleted");
     }
 
-    @PostMapping("/start/{id}")
+    @PostMapping("/start/{contestId}")
     public ResponseEntity<Map<String, String>> start(@PathVariable Long contestId){
         Long userId = (Long) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         contestService.startContest(contestId, userId);
@@ -58,6 +63,13 @@ public class ContestController {
     public List<QuestionDTO> getQuestionsForContest(@PathVariable Long contestId,
                                                     @RequestHeader("Authorization") String token ){
         return contestService.getQuestionsForContest(contestId, token);
+    }
+    @PostMapping("{contest_id}/submit")
+    public ResponseEntity<Map<String, String>> submitAnswer(@PathVariable Long contestId, @RequestBody AnswerSubmissionRequest request){
+        Long userId = (Long) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        contestService.submitAnswer(userId, contestId, request.getQuestionId(), request.getOptionId(), request.getOptionText());
+        return ResponseEntity.ok(Map.of("message", "Answer Submitted Successfully"));
+
     }
 
     @GetMapping("/{id}")

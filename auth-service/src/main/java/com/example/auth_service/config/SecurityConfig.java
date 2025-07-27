@@ -26,9 +26,15 @@ public class SecurityConfig {
         return http
                 .csrf().disable()
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/auth/**").permitAll()
+                        .requestMatchers(
+                                "/auth/**",
+                                "/swagger-ui/**",         // ✅ matches static files like index.html
+                                "/v3/api-docs/**",        // ✅ matches the OpenAPI spec
+                                "/v3/api-docs.yaml"       // (optional) if you're serving YAML format
+                        ).permitAll()
                         .anyRequest().authenticated()
                 )
+
                 .sessionManagement(sess -> sess
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
