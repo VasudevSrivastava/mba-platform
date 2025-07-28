@@ -47,9 +47,19 @@ public class ContestController {
         return ResponseEntity.ok("Contest Deleted");
     }
 
-    @PostMapping("/start/{contestId}")
+    @PostMapping("/{contestId}/start")
     public ResponseEntity<Map<String, String>> start(@PathVariable Long contestId){
-        Long userId = (Long) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        Object principalObj = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+
+        Long userId;
+        if (principalObj instanceof Long) {
+            userId = (Long) principalObj;
+        } else if (principalObj instanceof String) {
+            userId = Long.parseLong((String) principalObj);  // safe parse
+        } else {
+            throw new IllegalStateException("Unexpected principal type: " + principalObj.getClass());
+        }
+
         contestService.startContest(contestId, userId);
         return ResponseEntity.ok(Map.of("message", "Contest Attempt Started"));
     }
@@ -59,12 +69,12 @@ public class ContestController {
         return contestService.getAllContests();
     }
 
-    @GetMapping("getQuestions/{id}")
+    @GetMapping("{contestId}/getQuestions")
     public List<QuestionDTO> getQuestionsForContest(@PathVariable Long contestId,
                                                     @RequestHeader("Authorization") String token ){
         return contestService.getQuestionsForContest(contestId, token);
     }
-    @PostMapping("{contest_id}/submit")
+    @PostMapping("{contest_id}/submit-answer")
     public ResponseEntity<Map<String, String>> submitAnswer(@PathVariable Long contestId, @RequestBody AnswerSubmissionRequest request){
         Long userId = (Long) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         contestService.submitAnswer(userId, contestId, request.getQuestionId(), request.getOptionId(), request.getOptionText());

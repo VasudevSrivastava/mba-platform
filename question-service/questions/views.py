@@ -53,6 +53,5 @@ class QuestionBatchFetchView(APIView):
         id_list = self.request.data.get('id_list', [])
         questions = Question.objects.filter(id__in=id_list)
         serializer = QuestionSerializer(questions, many=True)
-        print("Question Service | Raw request body:", request.body)
         return Response(serializer.data)
     

@@ -31,7 +31,6 @@ public class ContestService {
     private final QuestionValidator questionValidator;
     private final AnswerSubmissionRepository answerSubmissionRepository;
 
-
     public void create(ContestRequest request, String authHeader){
         if (!questionValidator.areValidQuestionIds(request.getQuestionIds(), authHeader)){
             throw new IllegalArgumentException("Some question IDs are invalid");
